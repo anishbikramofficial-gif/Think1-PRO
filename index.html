@@ -1,0 +1,450 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Think1.0 Pro – AI chat, images &amp; video</title>
+<meta name="description" content="Think1.0 Pro is a free AI assistant: chat, analyse images, and create illustrations and animated videos.">
+<meta name="theme-color" content="#eef8fb">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%A7%A0%3C/text%3E%3C/svg%3E">
+<style>
+:root{--bg-main:#eef8fb;--bg-surface:#ffffff;--bg-user-msg:#cbe8f8;--bg-ai-msg:#dff5e8;--text-main:#1f3d4f;--text-muted:#5f8190;--border-color:#c5e2e8;--accent:#8ccdee;--green:#bfeacf;--on-accent:#12384f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-main);color:var(--text-main);font-family:system-ui,-apple-system,sans-serif}
+#auth-screen{position:fixed;inset:0;background:var(--bg-main);display:flex;align-items:center;justify-content:center;z-index:1000}
+.auth-card{background:var(--bg-surface);padding:32px;border-radius:16px;border:1px solid var(--border-color);width:100%;max-width:360px;display:flex;flex-direction:column;gap:16px}
+.auth-card h2{margin:0 0 8px;text-align:center}
+.auth-input,.set-input{background:var(--bg-main);color:var(--text-main);border:1px solid var(--border-color);border-radius:8px;padding:12px;font-size:15px;width:100%;font-family:inherit}
+.auth-input:focus,.set-input:focus{outline:none;border-color:var(--accent)}
+main{max-width:850px;margin:auto;height:100vh;height:100dvh;display:none;flex-direction:column}
+header{padding:14px 16px;background:var(--bg-surface);border-bottom:1px solid var(--border-color);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hr{display:flex;align-items:center;gap:8px}
+#chat{flex:1;padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.m{padding:12px 16px;border-radius:16px;max-width:80%;line-height:1.55;word-break:break-word;white-space:pre-wrap}
+.u{background:var(--bg-user-msg);align-self:flex-end;border-bottom-right-radius:4px}
+.a{background:var(--bg-ai-msg);align-self:flex-start;border-bottom-left-radius:4px;border:1px solid var(--border-color)}
+.a.err{border-color:#e58a8a;color:#9b2c2c;background:#fdecec}
+.m pre{background:#f3fbf7;border:1px solid var(--border-color);border-radius:8px;padding:10px;overflow-x:auto;margin:8px 0;white-space:pre}
+.m code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px}
+.m :not(pre)>code{background:#e9f6ef;padding:1px 5px;border-radius:4px}
+.m h3,.m h4{margin:8px 0 2px;font-size:1em}
+.thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.thumbs img{width:90px;height:90px;object-fit:cover;border-radius:8px}
+.cursor::after{content:"▍";animation:bl 1s steps(2) infinite;color:var(--text-muted)}
+@keyframes bl{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.cursor::after{animation:none}}
+.bar-container{background:var(--bg-surface);border-top:1px solid var(--border-color);padding:12px}
+#album{display:flex;gap:8px;padding-bottom:8px;overflow-x:auto}
+.album-item{position:relative;width:60px;height:60px;border-radius:8px;border:1px solid var(--border-color);background-size:cover;background-position:center;flex-shrink:0}
+.album-item span{position:absolute;top:-4px;right:-4px;background:#e07a7a;color:#fff;border-radius:50%;width:16px;height:16px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-weight:bold}
+.bar{display:flex;gap:10px;align-items:flex-end}
+textarea{flex:1;background:var(--bg-main);color:var(--text-main);border:1px solid var(--border-color);border-radius:12px;padding:12px;resize:none;font-family:inherit;font-size:15px;max-height:160px}
+textarea:focus{outline:none;border-color:var(--accent)}
+button{background:var(--accent);color:var(--on-accent);border:0;border-radius:12px;padding:12px 20px;font-weight:bold;cursor:pointer;height:46px;font-family:inherit}
+button:hover{opacity:.9}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #4aa3d3;outline-offset:2px}
+.sm{background:var(--green);color:var(--on-accent);font-size:13px;height:auto;padding:6px 12px;border-radius:6px}
+.sm:hover{background:#a9e0bf}
+.attach-btn{background:var(--green);padding:12px;font-size:18px;width:46px}
+.mode-btn{background:var(--green);padding:0;font-size:18px;width:46px}
+.mode-btn.on{background:var(--accent);box-shadow:0 0 0 2px #4aa3d3 inset}
+#stop-btn{background:#f4b0b0;color:#5a1a1a;display:none}
+#f-input{display:none}
+#settings{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:900;padding:16px}
+.set-card{background:var(--bg-surface);border:1px solid var(--border-color);border-radius:16px;padding:24px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:12px;max-height:90vh;overflow-y:auto}
+.set-card h3{margin:0}
+.set-card label{font-size:13px;color:var(--text-muted);display:flex;flex-direction:column;gap:4px}
+.gen{width:100%;border-radius:12px;display:block;background:#fff;border:1px solid var(--border-color);margin-bottom:8px}
+#history{position:fixed;top:0;left:0;bottom:0;width:300px;max-width:85vw;background:var(--bg-surface);border-right:1px solid var(--border-color);transform:translateX(-100%);transition:transform .2s;z-index:800;display:flex;flex-direction:column;padding:12px;gap:8px}
+#history.open{transform:none}
+#scrim{position:fixed;inset:0;background:rgba(31,61,79,.25);z-index:700;display:none}
+#scrim.open{display:block}
+.drawer-head{display:flex;justify-content:space-between;align-items:center}
+#hist-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+.hist-item{display:flex;align-items:center;gap:6px;border:1px solid var(--border-color);border-radius:10px;padding:4px 4px 4px 10px;background:var(--bg-main)}
+.hist-item.cur{background:var(--bg-user-msg)}
+.hist-item .t{flex:1;text-align:left;background:none;color:var(--text-main);font-weight:600;font-size:13px;height:auto;padding:6px 0;border-radius:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-item .d{background:none;color:var(--text-muted);height:auto;padding:4px 8px;font-size:16px}
+@media (prefers-reduced-motion:reduce){#history{transition:none}}
+.note{font-size:12px;color:var(--text-muted);line-height:1.4;margin:0}
+</style>
+</head>
+<body>
+
+<div id="auth-screen">
+  <div class="auth-card">
+    <h2>Think1.0 Pro</h2>
+    <input type="text" id="username-field" class="auth-input" placeholder="Your name" maxlength="30" autocomplete="given-name">
+    <button onclick="login()">Start chatting</button>
+    <p class="note" style="text-align:center">AI can make mistakes. Chats are saved only in your browser.</p>
+  </div>
+</div>
+
+<div id="settings">
+  <div class="set-card">
+    <h3>AI settings</h3>
+    <label>Provider
+      <select id="set-provider" class="set-input" onchange="providerChanged()">
+        <option value="anthropic">Provider A</option>
+        <option value="openai">OpenAI (ChatGPT)</option>
+        <option value="custom">Other OpenAI-compatible (Groq, OpenRouter, Ollama…)</option>
+      </select>
+    </label>
+    <label>API key <input id="set-key" type="password" class="set-input" placeholder="sk-..." autocomplete="off"></label>
+    <label>Model <input id="set-model" class="set-input"></label>
+    <label id="base-wrap">Base URL <input id="set-base" class="set-input" placeholder="https://api.groq.com/openai/v1"></label>
+    <label>System prompt <textarea id="set-system" rows="3" class="set-input"></textarea></label>
+    <p class="note">Your key is stored only in this browser.</p>
+    <div class="hr" style="justify-content:flex-end">
+      <button class="sm" onclick="closeSettings()">Cancel</button>
+      <button onclick="saveSettings()" style="height:36px;padding:0 18px">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="scrim" onclick="toggleHistory()"></div>
+<aside id="history" aria-label="Chat history">
+  <div class="drawer-head"><b>History</b><button class="sm" onclick="toggleHistory()" aria-label="Close">✕</button></div>
+  <button class="sm" onclick="newChat(); toggleHistory(true)">＋ New chat</button>
+  <div id="hist-list"></div>
+  <button class="sm" onclick="clearAll()">Delete all history</button>
+</aside>
+
+<main id="app-workspace">
+  <header>
+    <div class="hr"><button class="sm" onclick="toggleHistory()" aria-label="Chat history">☰ History</button><b>Think1.0 Pro</b></div>
+    <div class="hr">
+      <span id="user-display" style="font-size:14px;font-weight:500"></span>
+      <button class="sm" onclick="openSettings()" style="display:none">Settings</button>
+      <button class="sm" onclick="newChat()">New chat</button>
+      <button class="sm" onclick="logout()">Logout</button>
+    </div>
+  </header>
+  <div id="chat"></div>
+  <div class="bar-container">
+    <div id="album"></div>
+    <div class="bar">
+      <input type="file" id="f-input" accept="image/*" multiple onchange="handleFiles(this.files)">
+      <button class="attach-btn" onclick="document.getElementById('f-input').click()" title="Attach images" aria-label="Attach images">📎</button>
+      <button class="mode-btn" id="mode-image" onclick="setMode('image')" title="Create image" aria-label="Create image" aria-pressed="false">🎨</button>
+      <button class="mode-btn" id="mode-video" onclick="setMode('video')" title="Create video" aria-label="Create video" aria-pressed="false">🎬</button>
+      <textarea id="i" rows="1" placeholder="Message Think1.0…"></textarea>
+      <button id="send-btn" onclick="send()">Send</button>
+      <button id="stop-btn" onclick="stopGen()">Stop</button>
+    </div>
+  </div>
+</main>
+
+<script>
+const K = "think1_pro_ai";
+const DEFAULTS = {
+  anthropic: { model: "claude-sonnet-5-5" },
+  openai: { model: "gpt-4o" },
+  custom: { model: "" }
+};
+/* Hard-code your AI config here (leave key empty to use the hidden settings panel: Ctrl+Shift+S) */
+const PRESET = { provider: "openai", key: "", model: "gpt-4o", base: "" };
+let s = load();
+s.cfg.model = "ai";
+s.cfg.system = "You are Think1.0, a helpful, honest and concise AI assistant. Use markdown for code. Do not volunteer which underlying model or company powers you.";
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const newChatObj = () => ({ id: uid(), title: "New chat", ts: Date.now(), messages: [] });
+if (!Array.isArray(s.chats)) s.chats = [];
+if (Array.isArray(s.messages) && s.messages.length && !s.chats.length)
+  s.chats.push({ id: uid(), title: (s.messages.find(m => m.r === 'u') || {}).t || "Earlier chat", ts: Date.now(), messages: s.messages });
+let cur = s.chats.find(c => c.id === s.curId);
+s.chats = s.chats.filter(c => c.messages.length || c === cur);
+if (!cur) { cur = s.chats[0] || newChatObj(); if (!s.chats.includes(cur)) s.chats.unshift(cur); }
+s.curId = cur.id; s.messages = cur.messages;
+let mode = 'chat';
+if (PRESET.key) Object.assign(s.cfg, PRESET);
+let attachedFiles = [];
+let busy = false, controller = null, stopFlag = false;
+
+function load() {
+  const base = { messages: [], currentUser: null,
+    cfg: { provider: "anthropic", key: "", model: DEFAULTS.anthropic.model, base: "",
+           system: "You are Think1.0, a helpful, honest and concise AI assistant. Use markdown for code." } };
+  try { return Object.assign(base, JSON.parse(localStorage.getItem(K) || "{}")); } catch { return base; }
+}
+function save() {
+  const strip = ms => ms.map(m => ({ r: m.r, t: m.t, err: m.err, gen: m.gen, n: m.imgs ? m.imgs.length : m.n }));
+  const copy = { currentUser: s.currentUser, cfg: s.cfg, curId: s.curId,
+    chats: s.chats.map(c => ({ id: c.id, title: c.title, ts: c.ts, messages: strip(c.messages) })) };
+  try { localStorage.setItem(K, JSON.stringify(copy)); } catch {}
+}
+
+const $ = id => document.getElementById(id);
+const chatEl = $('chat'), inputEl = $('i'), albumEl = $('album');
+
+/* ---------- auth ---------- */
+function checkAuthState() {
+  if (s.currentUser) {
+    $('auth-screen').style.display = 'none';
+    $('app-workspace').style.display = 'flex';
+    $('user-display').textContent = s.currentUser;
+    render(); renderHistory();
+  } else {
+    $('auth-screen').style.display = 'flex';
+    $('app-workspace').style.display = 'none';
+  }
+}
+function login() {
+  const user = $('username-field').value.trim();
+  if (!user) return alert("Please enter your name.");
+  s.currentUser = user; save();
+  $('username-field').value = "";
+  checkAuthState();
+}
+$('username-field').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+function logout() { stopGen(); $('history').classList.remove('open'); $('scrim').classList.remove('open'); s.currentUser = null; attachedFiles = []; renderAlbum(); save(); checkAuthState(); }
+function newChat() {
+  stopGen();
+  if (s.messages.length) { cur = newChatObj(); s.chats.unshift(cur); }
+  s.curId = cur.id; s.messages = cur.messages;
+  save(); render(); renderHistory();
+}
+function toggleHistory(force) {
+  const open = force === undefined ? !$('history').classList.contains('open') : !!force;
+  if (force === true) { renderHistory(); return; }
+  $('history').classList.toggle('open', open); $('scrim').classList.toggle('open', open);
+  if (open) renderHistory();
+}
+function renderHistory() {
+  const list = s.chats.slice().sort((a, b) => b.ts - a.ts);
+  $('hist-list').innerHTML = list.map(c =>
+    `<div class="hist-item${c.id === cur.id ? ' cur' : ''}"><button class="t" data-open="${c.id}">${esc(c.title)}</button><button class="d" data-del="${c.id}" aria-label="Delete chat">×</button></div>`).join('')
+    || '<div class="note">No chats yet.</div>';
+}
+$('hist-list').addEventListener('click', e => {
+  const o = e.target.closest('[data-open]'), d = e.target.closest('[data-del]');
+  if (o) openChat(o.dataset.open); else if (d) deleteChat(d.dataset.del);
+});
+function openChat(id) {
+  const c = s.chats.find(x => x.id === id); if (!c) return;
+  stopGen(); cur = c; s.curId = c.id; s.messages = c.messages;
+  save(); render(); renderHistory(); $('history').classList.remove('open'); $('scrim').classList.remove('open');
+}
+function deleteChat(id) {
+  s.chats = s.chats.filter(c => c.id !== id);
+  if (id === cur.id) { cur = s.chats[0] || newChatObj(); if (!s.chats.includes(cur)) s.chats.push(cur); s.curId = cur.id; s.messages = cur.messages; render(); }
+  save(); renderHistory();
+}
+function clearAll() {
+  if (!confirm("Delete all chat history?")) return;
+  stopGen(); cur = newChatObj(); s.chats = [cur]; s.curId = cur.id; s.messages = cur.messages;
+  save(); render(); renderHistory();
+}
+function setMode(m) {
+  mode = mode === m ? 'chat' : m;
+  $('mode-image').classList.toggle('on', mode === 'image'); $('mode-image').setAttribute('aria-pressed', mode === 'image');
+  $('mode-video').classList.toggle('on', mode === 'video'); $('mode-video').setAttribute('aria-pressed', mode === 'video');
+  inputEl.placeholder = mode === 'image' ? "Describe the image to create…" : mode === 'video' ? "Describe the video to create…" : "Message Think1.0…";
+}
+
+/* ---------- settings ---------- */
+function openSettings() {
+  const c = s.cfg;
+  $('set-provider').value = c.provider; $('set-key').value = c.key || '';
+  $('set-model').value = c.model; $('set-base').value = c.base; $('set-system').value = c.system;
+  providerChanged(true);
+  $('settings').style.display = 'flex';
+}
+function closeSettings() { $('settings').style.display = 'none'; }
+function providerChanged(keep) {
+  const p = $('set-provider').value;
+  $('base-wrap').style.display = p === 'custom' ? 'flex' : 'none';
+  if (keep !== true) $('set-model').value = DEFAULTS[p].model;
+}
+function saveSettings() {
+  s.cfg = { provider: $('set-provider').value, key: $('set-key').value.trim(), model: $('set-model').value.trim(),
+            base: $('set-base').value.trim().replace(/\/+$/, ''), system: $('set-system').value.trim() };
+  save(); closeSettings();
+}
+
+/* ---------- rendering ---------- */
+function esc(x) { return String(x).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+function md(text) {
+  const parts = String(text).split(/```/);
+  return parts.map((p, i) => {
+    if (i % 2) { // code block
+      const nl = p.indexOf('\n');
+      const body = nl >= 0 ? p.slice(nl + 1) : p;
+      return '<pre><code>' + esc(body.replace(/\n$/, '')) + '</code></pre>';
+    }
+    return esc(p)
+      .replace(/^#{1,2} (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^#{3,6} (.+)$/gm, '<h4>$1</h4>')
+      .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
+      .replace(/(^|[\s(])\*([^*\n]+)\*/g, '$1<i>$2</i>')
+      .replace(/^[-*] /gm, '• ');
+  }).join('');
+}
+function bubble(m, last, idx) {
+  const cls = m.r === 'u' ? 'u' : 'a' + (m.err ? ' err' : '');
+  let inner = '';
+  if (m.imgs && m.imgs.length) inner += '<div class="thumbs">' + m.imgs.map(src => `<img src="${src}" alt="attachment">`).join('') + '</div>';
+  else if (m.n) inner += `<div style="opacity:.7;font-size:13px">[${m.n} image(s) attached]</div>`;
+  if (m.gen) inner += `<img class="gen" alt="${m.gen.kind === 'video' ? 'Generated animation' : 'Generated image'}" src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(m.gen.svg)}">`;
+  inner += m.r === 'u' || m.err ? esc(m.t) : md(m.t);
+  if (m.gen) inner += `<div style="margin-top:8px"><button class="sm" onclick="downloadGen(${idx})">⬇ Download ${m.gen.kind === 'video' ? 'video' : 'image'}</button></div>`;
+  return `<div class="m ${cls}${last && busy && m.r === 'a' ? ' cursor' : ''}">${inner}</div>`;
+}
+function render() {
+  if (!s.messages.length) {
+    chatEl.innerHTML = `<div class="m a">Hi ${esc(s.currentUser || '')}! I'm Think1.0. Ask me anything, attach images, or tap 🎨 / 🎬 to create an image or video.</div>`;
+    return;
+  }
+  chatEl.innerHTML = s.messages.map((m, i) => bubble(m, i === s.messages.length - 1, i)).join('');
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+/* ---------- attachments ---------- */
+function handleFiles(files) {
+  for (const f of files) {
+    if (!f.type.startsWith('image/')) continue;
+    const r = new FileReader();
+    r.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 1024 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        if (attachedFiles.length < 3) { attachedFiles.push(c.toDataURL('image/jpeg', 0.8)); renderAlbum(); }
+      };
+      img.src = e.target.result;
+    };
+    r.readAsDataURL(f);
+  }
+  $('f-input').value = "";
+}
+function renderAlbum() {
+  albumEl.innerHTML = attachedFiles.map((src, i) =>
+    `<div class="album-item" style="background-image:url('${src}')"><span onclick="removeAttachment(${i})">×</span></div>`).join('');
+}
+function removeAttachment(i) { attachedFiles.splice(i, 1); renderAlbum(); }
+
+/* ---------- AI ---------- */
+function buildHistory() {
+  const sys = s.cfg.system + (s.currentUser ? `\nThe user's name is ${s.currentUser}.` : "");
+  let msgs = s.messages.filter(m => !m.err && (m.t || m.imgs)).slice(-30);
+  while (msgs.length && msgs[0].r !== 'u') msgs.shift();
+  return { sys, msgs };
+}
+function toContent(m, provider) {
+  const imgs = m.imgs || [];
+  if (!imgs.length) return m.t;
+  const parts = imgs.map(src => {
+    const mt = src.slice(5, src.indexOf(';')), data = src.split(',')[1];
+    return provider === 'anthropic'
+      ? { type: 'image', source: { type: 'base64', media_type: mt, data } }
+      : { type: 'image_url', image_url: { url: src } };
+  });
+  parts.push({ type: provider === 'anthropic' ? 'text' : 'text', text: m.t || "What is in this image?" });
+  return parts;
+}
+
+/* ---------- AI (talks to /api/chat; the API key lives on the server only) ---------- */
+async function callApi(body, onDelta, signal) {
+  let res;
+  try { res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal }); }
+  catch (e) { if (e.name === 'AbortError') throw e; throw new Error("Can't reach the server. Check your connection."); }
+  if (!res.ok) {
+    let msg = ""; try { msg = (await res.json()).error || ""; } catch {}
+    throw new Error(msg || "Server error (" + res.status + ")");
+  }
+  const reader = res.body.getReader(), dec = new TextDecoder();
+  let buf = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    const lines = buf.split("\n"); buf = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith("data:")) continue;
+      const data = line.slice(5).trim();
+      if (!data || data === "[DONE]") continue;
+      let j; try { j = JSON.parse(data); } catch { continue; }
+      if (j.type === 'content_block_delta' && j.delta && j.delta.text) onDelta(j.delta.text);
+      else if (j.type === 'error') throw new Error("The AI had a problem. Please try again.");
+    }
+  }
+}
+async function streamReply(onDelta) {
+  const { msgs } = buildHistory();
+  const last = msgs[msgs.length - 1];
+  const messages = msgs.map(m => ({ role: m.r === 'u' ? 'user' : 'assistant', content: m.t || "What is in this image?" }));
+  controller = new AbortController();
+  await callApi({ mode: 'chat', messages, images: (last && last.imgs) || [], name: s.currentUser || "" }, onDelta, controller.signal);
+}
+function setBusy(b) {
+  busy = b;
+  $('send-btn').style.display = b ? 'none' : '';
+  $('stop-btn').style.display = b ? '' : 'none';
+}
+function stopGen() { stopFlag = true; if (controller) controller.abort(); }
+
+async function generateMedia(kind, prompt, refs, reply) {
+  controller = new AbortController();
+  let text = "";
+  await callApi({ mode: kind, prompt, images: refs }, t => { text += t; }, controller.signal);
+  const mm = text.match(/<svg[\s\S]*<\/svg>/i);
+  if (!mm) throw new Error("I couldn't draw that. Try describing it a little differently.");
+  let svg = mm[0]
+    .replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, '')
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*')/gi, '').replace(/(xlink:)?href\s*=\s*("https?:[^"]*"|'https?:[^']*')/gi, '');
+  if (!/xmlns=/.test(svg.slice(0, 300))) svg = svg.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"');
+  if (svg.length > 150000) throw new Error("That result was too large. Try something simpler.");
+  reply.gen = { kind, svg };
+  reply.t = (kind === 'video' ? "Here is your animated video: " : "Here is your image: ") + prompt.slice(0, 200);
+}
+function downloadGen(i) {
+  const m = s.messages[i]; if (!m || !m.gen) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([m.gen.svg], { type: 'image/svg+xml' }));
+  a.download = (m.gen.kind === 'video' ? 'think1-video' : 'think1-image') + '.svg';
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+async function send() {
+  if (busy) return;
+  const q = inputEl.value.trim();
+  if (!q && !(mode === 'chat' && attachedFiles.length)) return;
+  if (q.length > 20000) return alert("Message too long.");
+
+  const refs = attachedFiles.slice(), kind = mode;
+  if (cur.title === "New chat") cur.title = (q || "Image chat").slice(0, 40);
+  cur.ts = Date.now();
+  s.messages.push({ r: 'u', t: (kind === 'image' ? '🎨 ' : kind === 'video' ? '🎬 ' : '') + q, imgs: refs });
+  const reply = { r: 'a', t: "" };
+  s.messages.push(reply);
+  attachedFiles = []; renderAlbum();
+  inputEl.value = ""; inputEl.style.height = "auto";
+  setBusy(true); render(); renderHistory();
+
+  stopFlag = false;
+  try {
+    if (kind === 'chat') await streamReply(t => { reply.t += t; render(); });
+    else await generateMedia(kind, q, refs, reply);
+    if (!reply.t) { reply.t = "(No response received.)"; }
+  } catch (e) {
+    if (e.name === 'AbortError' || stopFlag) { if (!reply.t) reply.t = "(Stopped.)"; }
+    else { reply.err = true; reply.t = "Request failed: " + e.message; }
+  }
+  s.messages = s.messages.slice(-300); cur.messages = s.messages;
+  setBusy(false); save(); render(); renderHistory();
+}
+
+inputEl.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+});
+inputEl.addEventListener("input", () => {
+  inputEl.style.height = "auto";
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 160) + "px";
+});
+
+checkAuthState();
+</script>
+</body>
+</html>
